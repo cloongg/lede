@@ -15,12 +15,13 @@ PKG_LICENSE_FILES:=
 
 PKG_SOURCE_URL:=https://github.com/kaloz/mwlwifi
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_DATE:=2018-10-29
-PKG_SOURCE_VERSION:=382700ce5744fe80271c57a89c6589e767d91620
-PKG_MIRROR_HASH:=7378b7d391aeec7a86b6548723911d21bc780ea84ceea858e910cc65a1d925c6
+PKG_SOURCE_DATE:=2025-02-06
+PKG_SOURCE_VERSION:=db97edf20fadea2617805006f5230665fadc6a8c
+PKG_MIRROR_HASH:=49939e39800dd3166f2e096c23efb3be205beb743afbd405643ed570cbad6a7e
 
 PKG_MAINTAINER:=Imre Kaloz <kaloz@openwrt.org>
 PKG_BUILD_PARALLEL:=1
+PKG_FLAGS:=nonshared
 
 include $(INCLUDE_DIR)/kernel.mk
 include $(INCLUDE_DIR)/package.mk
@@ -28,23 +29,24 @@ include $(INCLUDE_DIR)/package.mk
 define KernelPackage/mwlwifi
   SUBMENU:=Wireless Drivers
   TITLE:=Marvell 88W8864/88W8897/88W8964/88W8997 wireless driver
-  DEPENDS:=+kmod-mac80211 +@DRIVER_11N_SUPPORT +@DRIVER_11AC_SUPPORT +@DRIVER_11W_SUPPORT @PCI_SUPPORT @TARGET_mvebu
+  DEPENDS:=+kmod-mac80211 +@DRIVER_11AC_SUPPORT @PCI_SUPPORT @TARGET_mvebu
   FILES:=$(PKG_BUILD_DIR)/mwlwifi.ko
   AUTOLOAD:=$(call AutoLoad,50,mwlwifi)
 endef
 
-NOSTDINC_FLAGS = \
+NOSTDINC_FLAGS := \
+	$(KERNEL_NOSTDINC_FLAGS) \
 	-I$(PKG_BUILD_DIR) \
 	-I$(STAGING_DIR)/usr/include/mac80211-backport/uapi \
 	-I$(STAGING_DIR)/usr/include/mac80211-backport \
 	-I$(STAGING_DIR)/usr/include/mac80211/uapi \
 	-I$(STAGING_DIR)/usr/include/mac80211 \
-	-include backport/backport.h
+	-include backport/backport.h \
+	-Wno-unused-result
 
 define Build/Compile
-	+$(MAKE) $(PKG_JOBS) -C "$(LINUX_DIR)" \
-		$(KERNEL_MAKE_FLAGS) \
-		SUBDIRS="$(PKG_BUILD_DIR)" \
+	+$(KERNEL_MAKE) $(PKG_JOBS) \
+		M="$(PKG_BUILD_DIR)" \
 		NOSTDINC_FLAGS="$(NOSTDINC_FLAGS)" \
 		modules
 endef

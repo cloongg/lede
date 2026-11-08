@@ -8,16 +8,18 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=mdadm
-PKG_VERSION:=4.0
-PKG_RELEASE:=4
+PKG_VERSION:=4.4
+PKG_RELEASE:=1
 
-PKG_SOURCE_URL:=@KERNEL/linux/utils/raid/mdadm
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.xz
-PKG_HASH:=1d6ae7f24ced3a0fa7b5613b32f4a589bb4881e3946a5a2c3724056254ada3a9
+PKG_SOURCE_URL:=@KERNEL/linux/utils/raid/mdadm
+PKG_HASH:=9b488f35ed153df99924b5fe41eed380e8512de8f18a118628cacdd681b1d573
 
 PKG_MAINTAINER:=Felix Fietkau <nbd@nbd.name>
+PKG_CPE_ID:=cpe:/a:mdadm_project:mdadm
 
 PKG_BUILD_PARALLEL:=1
+PKG_BUILD_FLAGS:=gc-sections
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -26,7 +28,7 @@ define Package/mdadm
   CATEGORY:=Utilities
   SUBMENU:=Disc
   TITLE:=A tool for managing Soft RAID under Linux
-  URL:=http://www.kernel.org/pub/linux/utils/raid/mdadm/
+  URL:=https://www.kernel.org/pub/linux/utils/raid/mdadm/
   DEPENDS:=+libpthread +kmod-md-mod +kmod-md-raid0 +kmod-md-raid10 +kmod-md-raid1
 endef
 
@@ -42,16 +44,19 @@ define Package/mdadm/conffiles
 endef
 
 TARGET_CFLAGS += \
-	-ffunction-sections -fdata-sections \
 	-DHAVE_STDINT_H -DNO_COROSYNC -DNO_DLM -DUSE_PTHREADS \
 	-DCONFFILE='\"/var/etc/mdadm.conf\"' \
 	-DMAP_DIR='\"/var/run/mdadm\"' \
 	-DMDMON_DIR='\"/var/run/mdadm\"' \
-	-DFAILED_SLOTS_DIR='\"/var/run/mdadm/failed-slots\"'
+	-DFAILED_SLOTS_DIR='\"/var/run/mdadm/failed-slots\"' \
+	-DNO_LIBUDEV \
+	-D_LARGEFILE64_SOURCE
 
-TARGET_LDFLAGS += -Wl,--gc-sections
+TARGET_CXFLAGS = -DNO_LIBUDEV
 
-MAKE_VARS += CHECK_RUN_DIR=0
+MAKE_FLAGS += \
+		CHECK_RUN_DIR=0 \
+		CXFLAGS="$(TARGET_CXFLAGS)"
 
 define Build/Compile
 	$(call Build/Compile/Default,mdadm)
@@ -63,7 +68,7 @@ define Package/mdadm/install
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/mdadm.init $(1)/etc/init.d/mdadm
 	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_DATA) ./files/mdadm.config $(1)/etc/config/mdadm
+	$(INSTALL_CONF) ./files/mdadm.config $(1)/etc/config/mdadm
 endef
 
 $(eval $(call BuildPackage,mdadm))

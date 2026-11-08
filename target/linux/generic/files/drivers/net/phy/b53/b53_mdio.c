@@ -273,54 +273,54 @@ static struct b53_io_ops b53_mdio_ops = {
 
 static int b53_phy_probe(struct phy_device *phydev)
 {
-	struct b53_device dev;
+	struct b53_device *dev;
 	int ret;
 
 	/* allow the generic phy driver to take over */
 	if (phydev->mdio.addr != B53_PSEUDO_PHY && phydev->mdio.addr != 0)
 		return -ENODEV;
 
-	dev.current_page = 0xff;
-	dev.priv = phydev->mdio.bus;
-	dev.ops = &b53_mdio_ops;
-	dev.pdata = NULL;
-	mutex_init(&dev.reg_mutex);
-
-	ret = b53_switch_detect(&dev);
-	if (ret)
-		return ret;
-
-	if (is5325(&dev) || is5365(&dev))
-		phydev->supported = SUPPORTED_100baseT_Full;
-	else
-		phydev->supported = SUPPORTED_1000baseT_Full;
-
-	phydev->advertising = phydev->supported;
-
-	return 0;
-}
-
-static int b53_phy_config_init(struct phy_device *phydev)
-{
-	struct b53_device *dev;
-	int ret;
-
-	dev = b53_switch_alloc(&phydev->mdio.dev, &b53_mdio_ops, phydev->mdio.bus);
+	dev = b53_swconfig_switch_alloc(&phydev->mdio.dev, &b53_mdio_ops, phydev->mdio.bus);
 	if (!dev)
 		return -ENOMEM;
 
-	/* we don't use page 0xff, so force a page set */
 	dev->current_page = 0xff;
-	/* force the ethX as alias */
-	dev->sw_dev.alias = phydev->attached_dev->name;
+	dev->priv = phydev->mdio.bus;
+	dev->ops = &b53_mdio_ops;
+	dev->pdata = NULL;
+	mutex_init(&dev->reg_mutex);
 
-	ret = b53_switch_register(dev);
+	ret = b53_swconfig_switch_detect(dev);
+	if (ret)
+		return ret;
+
+	linkmode_zero(phydev->supported);
+	if (is5325(dev) || is5365(dev))
+		linkmode_set_bit(ETHTOOL_LINK_MODE_100baseT_Full_BIT, phydev->supported);
+	else
+		linkmode_set_bit(ETHTOOL_LINK_MODE_1000baseT_Full_BIT, phydev->supported);
+
+	linkmode_copy(phydev->advertising, phydev->supported);
+
+	ret = b53_swconfig_switch_register(dev);
 	if (ret) {
 		dev_err(dev->dev, "failed to register switch: %i\n", ret);
 		return ret;
 	}
 
 	phydev->priv = dev;
+
+	return 0;
+}
+
+static int b53_phy_config_init(struct phy_device *phydev)
+{
+	struct b53_device *dev = phydev->priv;
+
+	/* we don't use page 0xff, so force a page set */
+	dev->current_page = 0xff;
+	/* force the ethX as alias */
+	dev->sw_dev.alias = phydev->attached_dev->name;
 
 	return 0;
 }
@@ -389,9 +389,9 @@ static struct phy_driver b53_phy_driver_id2 = {
 
 /* BCM5365 */
 static struct phy_driver b53_phy_driver_id3 = {
-	.phy_id		= 0x00406000,
+	.phy_id		= 0x00406300,
 	.name		= "Broadcom B53 (3)",
-	.phy_id_mask	= 0x1ffffc00,
+	.phy_id_mask	= 0x1fffff00,
 	.features	= 0,
 	.probe		= b53_phy_probe,
 	.remove		= b53_phy_remove,
@@ -400,33 +400,33 @@ static struct phy_driver b53_phy_driver_id3 = {
 	.read_status	= b53_phy_read_status,
 };
 
-int __init b53_phy_driver_register(void)
+static int __init b53_phy_driver_register(void)
 {
 	int ret;
 
-	ret = phy_driver_register(&b53_phy_driver_id1, THIS_MODULE);
+	ret = phy_drivers_register(&b53_phy_driver_id1, 1, THIS_MODULE);
 	if (ret)
 		return ret;
 
-	ret = phy_driver_register(&b53_phy_driver_id2, THIS_MODULE);
+	ret = phy_drivers_register(&b53_phy_driver_id2, 1, THIS_MODULE);
 	if (ret)
 		goto err1;
 
-	ret = phy_driver_register(&b53_phy_driver_id3, THIS_MODULE);
+	ret = phy_drivers_register(&b53_phy_driver_id3, 1, THIS_MODULE);
 	if (!ret)
 		return 0;
 
-	phy_driver_unregister(&b53_phy_driver_id2);
+	phy_drivers_unregister(&b53_phy_driver_id2, 1);
 err1:
-	phy_driver_unregister(&b53_phy_driver_id1);
+	phy_drivers_unregister(&b53_phy_driver_id1, 1);
 	return ret;
 }
 
-void __exit b53_phy_driver_unregister(void)
+static void __exit b53_phy_driver_unregister(void)
 {
-	phy_driver_unregister(&b53_phy_driver_id3);
-	phy_driver_unregister(&b53_phy_driver_id2);
-	phy_driver_unregister(&b53_phy_driver_id1);
+	phy_drivers_unregister(&b53_phy_driver_id3, 1);
+	phy_drivers_unregister(&b53_phy_driver_id2, 1);
+	phy_drivers_unregister(&b53_phy_driver_id1, 1);
 }
 
 module_init(b53_phy_driver_register);

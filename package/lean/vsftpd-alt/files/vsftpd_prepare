@@ -133,6 +133,8 @@ config_load vsftpd
 output_const "background" YES
 output_field listen port "listen_port" 21
 output_field listen dataport "ftp_data_port" 20
+output_field listen pasv_min_port "pasv_min_port" 50000
+output_field listen pasv_max_port "pasv_max_port" 51000
 
 # global
 output_bool global 'write' "write_enable" 1
@@ -142,7 +144,7 @@ output_bool global lsrecurse "ls_recurse_enable"
 output_bool global dotfile "force_dot_files"
 output_field global 'umask' "local_umask" 022
 
-ftpd_banner=`get_value global ftpd_banner`
+ftpd_banner=`get_value global banner`
 if ! [ -z $ftpd_banner ]; then
 	output_const "ftpd_banner" $ftpd_banner
 fi
@@ -249,5 +251,8 @@ else
 		output_const "local_enable" NO
 	fi
 fi
+
+output_const "seccomp_sandbox" NO
+output_const "use_localtime" YES
 
 exit 0

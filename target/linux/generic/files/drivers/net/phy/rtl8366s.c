@@ -18,6 +18,7 @@
 #include <linux/delay.h>
 #include <linux/skbuff.h>
 #include <linux/rtl8366.h>
+#include <linux/version.h>
 
 #include "rtl8366_smi.h"
 
@@ -1233,8 +1234,8 @@ static int rtl8366s_probe(struct platform_device *pdev)
 		       " version " RTL8366S_DRIVER_VER"\n");
 
 	smi = rtl8366_smi_probe(pdev);
-	if (!smi)
-		return -ENODEV;
+	if (IS_ERR(smi))
+		return PTR_ERR(smi);
 
 	smi->clk_delay = 10;
 	smi->cmd_read = 0xa9;
@@ -1266,7 +1267,11 @@ static int rtl8366s_probe(struct platform_device *pdev)
 	return err;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,11,0)
 static int rtl8366s_remove(struct platform_device *pdev)
+#else
+static void rtl8366s_remove(struct platform_device *pdev)
+#endif
 {
 	struct rtl8366_smi *smi = platform_get_drvdata(pdev);
 
@@ -1277,7 +1282,9 @@ static int rtl8366s_remove(struct platform_device *pdev)
 		kfree(smi);
 	}
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,11,0)
 	return 0;
+#endif
 }
 
 #ifdef CONFIG_OF

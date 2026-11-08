@@ -85,7 +85,11 @@ swconfig_trig_update_port_mask(struct led_trigger *trigger)
 	sw_trig = (void *) trigger;
 
 	port_mask = 0;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,16,0)
+	spin_lock(&trigger->leddev_list_lock);
+#else
 	read_lock(&trigger->leddev_list_lock);
+#endif
 	list_for_each(entry, &trigger->led_cdevs) {
 		struct led_classdev *led_cdev;
 		struct swconfig_trig_data *trig_data;
@@ -98,7 +102,11 @@ swconfig_trig_update_port_mask(struct led_trigger *trigger)
 			read_unlock(&trig_data->lock);
 		}
 	}
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,16,0)
+	spin_unlock(&trigger->leddev_list_lock);
+#else
 	read_unlock(&trigger->leddev_list_lock);
+#endif
 
 	sw_trig->port_mask = port_mask;
 
@@ -274,19 +282,16 @@ static ssize_t swconfig_trig_mode_store(struct device *dev,
 static DEVICE_ATTR(mode, 0644, swconfig_trig_mode_show,
 		   swconfig_trig_mode_store);
 
-static void
+static int
 swconfig_trig_activate(struct led_classdev *led_cdev)
 {
 	struct switch_led_trigger *sw_trig;
 	struct swconfig_trig_data *trig_data;
 	int err;
 
-	if (led_cdev->trigger->activate != swconfig_trig_activate)
-		return;
-
 	trig_data = kzalloc(sizeof(struct swconfig_trig_data), GFP_KERNEL);
 	if (!trig_data)
-		return;
+		return -ENOMEM;
 
 	sw_trig = (void *) led_cdev->trigger;
 
@@ -309,7 +314,7 @@ swconfig_trig_activate(struct led_classdev *led_cdev)
 	if (err)
 		goto err_mode_free;
 
-	return;
+	return 0;
 
 err_mode_free:
 	device_remove_file(led_cdev->dev, &dev_attr_speed_mask);
@@ -320,6 +325,8 @@ err_dev_free:
 err_free:
 	led_cdev->trigger_data = NULL;
 	kfree(trig_data);
+
+	return err;
 }
 
 static void
@@ -419,14 +426,22 @@ swconfig_trig_update_leds(struct switch_led_trigger *sw_trig)
 	struct led_trigger *trigger;
 
 	trigger = &sw_trig->trig;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,16,0)
+	spin_lock(&trigger->leddev_list_lock);
+#else
 	read_lock(&trigger->leddev_list_lock);
+#endif
 	list_for_each(entry, &trigger->led_cdevs) {
 		struct led_classdev *led_cdev;
 
 		led_cdev = list_entry(entry, struct led_classdev, trig_list);
 		swconfig_trig_led_event(sw_trig, led_cdev);
 	}
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,16,0)
+	spin_unlock(&trigger->leddev_list_lock);
+#else
 	read_unlock(&trigger->leddev_list_lock);
+#endif
 }
 
 static void

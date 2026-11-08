@@ -1,6 +1,5 @@
 PKG_DRIVERS += \
 	rt2x00-lib rt2x00-pci rt2x00-usb rt2x00-mmio \
-	rt2400-pci rt2500-pci rt2500-usb \
 	rt2800-lib rt2800-mmio rt2800-pci rt2800-soc rt2800-usb \
 	rt61-pci rt73-usb
 
@@ -37,7 +36,7 @@ endef
 
 define KernelPackage/rt2x00-lib
 $(call KernelPackage/rt2x00/Default)
-  DEPENDS+= @(PCI_SUPPORT||USB_SUPPORT||TARGET_ramips) +kmod-mac80211 +kmod-lib-crc-itu-t
+  DEPENDS+= @(PCI_SUPPORT||USB_SUPPORT||TARGET_ramips) +kmod-mac80211
   TITLE+= (LIB)
   FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/ralink/rt2x00/rt2x00lib.ko
   MENU:=1
@@ -64,7 +63,7 @@ endef
 
 define KernelPackage/rt2x00-mmio
 $(call KernelPackage/rt2x00/Default)
-  DEPENDS+= @(PCI_SUPPORT||TARGET_ramips) +kmod-rt2x00-lib +kmod-eeprom-93cx6
+  DEPENDS+= @(PCI_SUPPORT||TARGET_ramips) +kmod-rt2x00-lib
   HIDDEN:=1
   TITLE+= (MMIO)
   FILES:= $(PKG_BUILD_DIR)/drivers/net/wireless/ralink/rt2x00/rt2x00mmio.ko
@@ -90,34 +89,10 @@ endef
 
 define KernelPackage/rt2800-lib
 $(call KernelPackage/rt2x00/Default)
-  DEPENDS+= @(PCI_SUPPORT||USB_SUPPORT||TARGET_ramips) +kmod-rt2x00-lib +kmod-lib-crc-ccitt +@DRIVER_11N_SUPPORT
+  DEPENDS+= @(PCI_SUPPORT||USB_SUPPORT||TARGET_ramips) +kmod-rt2x00-lib +kmod-lib-crc-ccitt
   HIDDEN:=1
   TITLE+= (rt2800 LIB)
   FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/ralink/rt2x00/rt2800lib.ko
-endef
-
-define KernelPackage/rt2400-pci
-$(call KernelPackage/rt2x00/Default)
-  DEPENDS+= @PCI_SUPPORT +kmod-rt2x00-pci
-  TITLE+= (RT2400 PCI)
-  FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/ralink/rt2x00/rt2400pci.ko
-  AUTOLOAD:=$(call AutoProbe,rt2400pci)
-endef
-
-define KernelPackage/rt2500-pci
-$(call KernelPackage/rt2x00/Default)
-  DEPENDS+= @PCI_SUPPORT +kmod-rt2x00-pci
-  TITLE+= (RT2500 PCI)
-  FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/ralink/rt2x00/rt2500pci.ko
-  AUTOLOAD:=$(call AutoProbe,rt2500pci)
-endef
-
-define KernelPackage/rt2500-usb
-$(call KernelPackage/rt2x00/Default)
-  DEPENDS+= @USB_SUPPORT +kmod-rt2x00-usb
-  TITLE+= (RT2500 USB)
-  FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/ralink/rt2x00/rt2500usb.ko
-  AUTOLOAD:=$(call AutoProbe,rt2500usb)
 endef
 
 define KernelPackage/rt2800-mmio
@@ -133,14 +108,14 @@ $(call KernelPackage/rt2x00/Default)
   DEPENDS += @(TARGET_ramips_rt288x||TARGET_ramips_rt305x||TARGET_ramips_rt3883||TARGET_ramips_mt7620) +kmod-rt2800-mmio +kmod-rt2800-lib
   TITLE += (RT28xx/RT3xxx SoC)
   FILES := \
-	$(PKG_BUILD_DIR)/drivers/net/wireless/ralink/rt2x00/rt2x00soc.ko \
+	$(if $(filter-out 6.18,$(KERNEL_PATCHVER)),$(PKG_BUILD_DIR)/drivers/net/wireless/ralink/rt2x00/rt2x00soc.ko) \
 	$(PKG_BUILD_DIR)/drivers/net/wireless/ralink/rt2x00/rt2800soc.ko
   AUTOLOAD:=$(call AutoProbe,rt2800soc)
 endef
 
 define KernelPackage/rt2800-pci
 $(call KernelPackage/rt2x00/Default)
-  DEPENDS+= @PCI_SUPPORT +kmod-rt2x00-pci +kmod-rt2800-lib +kmod-rt2800-mmio +rt2800-pci-firmware
+  DEPENDS+= @PCI_SUPPORT +kmod-rt2x00-pci +kmod-rt2800-lib +kmod-rt2800-mmio +kmod-eeprom-93cx6 +rt2800-pci-firmware
   TITLE+= (RT2860 PCI)
   FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/ralink/rt2x00/rt2800pci.ko
   AUTOLOAD:=$(call AutoProbe,rt2800pci)
@@ -154,10 +129,9 @@ $(call KernelPackage/rt2x00/Default)
   AUTOLOAD:=$(call AutoProbe,rt2800usb)
 endef
 
-
 define KernelPackage/rt61-pci
 $(call KernelPackage/rt2x00/Default)
-  DEPENDS+= @PCI_SUPPORT +kmod-rt2x00-pci +rt61-pci-firmware
+  DEPENDS+= @PCI_SUPPORT +kmod-rt2x00-pci +kmod-eeprom-93cx6 +kmod-lib-crc-itu-t +rt61-pci-firmware
   TITLE+= (RT2x61 PCI)
   FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/ralink/rt2x00/rt61pci.ko
   AUTOLOAD:=$(call AutoProbe,rt61pci)
@@ -165,7 +139,7 @@ endef
 
 define KernelPackage/rt73-usb
   $(call KernelPackage/rt2x00/Default)
-  DEPENDS+= @USB_SUPPORT +kmod-rt2x00-usb +rt73-usb-firmware
+  DEPENDS+= @USB_SUPPORT +kmod-rt2x00-usb +kmod-lib-crc-itu-t +rt73-usb-firmware
   TITLE+= (RT73 USB)
   FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/ralink/rt2x00/rt73usb.ko
   AUTOLOAD:=$(call AutoProbe,rt73usb)
